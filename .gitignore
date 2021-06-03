@@ -2,7 +2,7 @@
 .vscode
 
 public/*.zip
-
+.directory
 
 # Logs
 logs
