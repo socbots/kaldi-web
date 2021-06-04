@@ -10,13 +10,25 @@
 </head>
 
 <body>
-    <p>
-        <button id="downloadModel">Download Model</button>
+    <p><select id="models">
+        <option>english</option>
+        <option>english_small</option>
+        </select>
+        <button id="downloadModel">Initialize Model</button>
         <button id="startASR">Start ASR</button>
         <button id="terminate">Terminate</button>
     </p>
-    <p id="output">output</p>
-    <p id="tempText">temporary text</p>
+    <p>
+        Säg red green eller blue för att ändra bakgrundsfärg!
+    </p>
+    <p>
+    <h2>Output</h3>
+        <span id="output">output</span>
+        </p>
+
+        <p>
+        <h2>Temporary transcription</h3><span id="tempText">temporary text</span>
+            </p>
 </body>
 
 </html>
