@@ -7,59 +7,73 @@ import downloadModelFromWeb from './utils/downloadModel.js';
 /**
  * This function sets everything up automatically from asking for microphone permission
  * to downloading the model and starting STT
- * It's really ugly now tho and writes and reads from html elements
- * TODO: It should also probably be turned into a class
  */
-function initKaldi() {
+export class KaldiASR {
+    constructor(modelURL, modelName) {
+        this.AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.onResampled = this.onResampled.bind(this);
+        this.onModelChange = this.onModelChange.bind(this);
+        this.startASR = this.startASR.bind(this);
+        this.stopASR = this.stopASR.bind(this);
+        this.updateTranscription = this.updateTranscription.bind(this);
 
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.resamplerBufferSize = 4096; // ~ 90 ms at 44.1kHz
+        this.modelURLPrefix = modelURL;
+        this.modelName = modelName;
+        this.robotCanListen = true;
 
-    const config = {
-        resamplerBufferSize: 4096, // ~ 90 ms at 44.1kHz
-        modelURLPrefix: 'models',
-        // modelURLPrefix: "https://people.arcada.fi/~penttinj/socbots/kaldi/models/", // no CORS on peoplearcada :(
-    };
+        this.state = {
+            prevIsFinal: false,
+            transcriptions: [""],
+            tmpTranscription: "",
+        }
 
-    const state = {
-        prevIsFinal: false,
-        transcriptions: [""],
-        tmpTranscription: "",
-        robotCanListen: true,
+        // The kaldi ASR worker
+        this.asrHandler = null;
+        // Audio processing worker
+        this.resamplerHandler = null;
     }
 
-    // The kaldi ASR worker
-    const asrHandler = new ASRHandler();
-    // Audio processing worker
-    let resamplerHandler;
+    async askForMicrophone() {
+        return new Promise((resolve, reject) => {
+            navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                .then((stream) => {
+                    const context = new this.AudioContext();
+                    const audioSource = context.createMediaStreamSource(stream);
+                    this.resamplerHandler = new ResampleHandler(audioSource,
+                        this.onResampled, this.resamplerBufferSize);
 
-    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-        .then((stream) => {
-            const context = new AudioContext();
-            const audioSource = context.createMediaStreamSource(stream);
-            resamplerHandler = new ResampleHandler(audioSource,
-                onResampled, config.resamplerBufferSize);
+                    resolve(true);
+                })
+                .catch((err) => {
+                    console.error(err);
+                    reject(false);
+                });
         })
-        .then(() => console.log("")) // This is to stall out to get resamplerHandler initialized before continuin
-        .catch(console.error);
+    }
 
+    init() {
+        this.asrHandler = new ASRHandler();
+        this.onModelChange(this.modelName);
+    }
 
     // This one downloads the model, initializes the ASR worker with it, sets up the audio handling
     // and currently also starts ASR so that you don't have to click all the buttons in the UI
-    function onModelChange(modelName) {
-        downloadAndStore(modelName)
+    onModelChange(modelName) {
+        this.downloadAndStore(modelName)
             .then(({ value: zip }) => new Promise((resolve, reject) => {
-                asrHandler.terminate()
+                this.asrHandler.terminate()
                     .then(() => {
-                        outputEl.innerHTML = "Initializing model";
-                        resolve(asrHandler.init(modelName, zip));
+                        console.log("Initializing model");
+                        resolve(this.asrHandler.init(modelName, zip));
                     })
                     .catch(reject);
             }))
-            .then(() => asrHandler.getSampleRate())
-            .then((asrSR) => { resamplerHandler.setSampleRate(asrSR); outputEl.innerHTML = "Model is set"; })
+            .then(() => this.asrHandler.getSampleRate())
+            .then((asrSR) => this.resamplerHandler.setSampleRate(asrSR))
             .then(() => {
                 console.log("model is set, starting ASR.....");
-                startASR();
+                this.startASR();
             })
             .catch(console.error);
     }
@@ -71,22 +85,19 @@ function initKaldi() {
      This is a pretty good place to decide if the robot should listen or not i think
      so robotCanListen is just a boolean that you can control when audio should be STT'd
     */
-    function onResampled(buffer) {
-        const { robotCanListen } = state;
-        if (robotCanListen) {
-            asrHandler.process(buffer)
-                .then(updateTranscription);
+    onResampled(buffer) {
+        if (this.robotCanListen) {
+            this.asrHandler.process(buffer)
+                .then(this.updateTranscription);
         }
     }
 
-    function downloadAndStore(modelName) {
+    downloadAndStore(modelName) {
         // prefix = "models". so it fetches from localhost:8080/models/:modelName which is actually a
         // a proxy to the express server at localhost:3300/models/:modelName
-        const { modelURLPrefix } = config;
         return new Promise((resolve, reject) => {
             console.log("Downloading model");
-            outputEl.innerHTML = "Downloading model";
-            downloadModelFromWeb(`${modelURLPrefix}/${modelName}`)
+            downloadModelFromWeb(`${this.modelURLPrefix}/${modelName}`)
                 .then((zip) => { resolve({ value: zip }); })
                 .catch(reject);
         });
@@ -95,7 +106,7 @@ function initKaldi() {
     /**
       This gets called every time kaldi has STT'd, the text gets emitted with a custom event
      */
-    function updateTranscription(transcription) {
+    updateTranscription(transcription) {
         if (transcription === null) return;
 
         const { text, isFinal } = transcription;
@@ -103,9 +114,9 @@ function initKaldi() {
         if (/*!state.prevIsFinal*/ true) {
             // bug: first trancript of new utterance always skipped
             if ((isFinal && text !== '') || !isFinal) {
-                const { transcriptions } = state;
-                state.transcriptions.push(text)
-                state.tmpTranscription = '';
+                const { transcriptions } = this.state;
+                this.state.transcriptions.push(text)
+                this.state.tmpTranscription = '';
                 console.log("Transcription: ", text);
 
                 // A custom event listener for announcing every time a new transcription is available
@@ -117,58 +128,40 @@ function initKaldi() {
                 });
                 dispatchEvent(evt);
             }
-            state.prevIsFinal = isFinal;
+            this.state.prevIsFinal = isFinal;
         }
     }
 
-    function startASR() {
-        resamplerHandler.start();
+    startASR() {
+        this.resamplerHandler.start();
         console.log("ASR Has started");
     }
 
-    function stopASR() {
-        resamplerHandler.stop()
-            .then(() => asrHandler.reset())
-            .then(updateTranscription)
+    stopASR() {
+        this.resamplerHandler.stop()
+            .then(() => this.asrHandler.reset())
+            .then(this.updateTranscription)
             .catch(console.log)
             .finally(() => console.log("ASR Has been stopped"));
     }
-
-
-    document.querySelector("#startASR").addEventListener("click", () => {
-        console.log("Clicked Start ASR");
-        startASR();
-        outputEl.innerHTML = "ASR has started";
-    });
-
-    document.querySelector("#downloadModel").addEventListener("click", () => {
-        console.log("Clicked download model");
-        outputEl.innerHTML = "Click";
-        onModelChange(document.querySelector("#models").value);
-        console.log(document.querySelector("#models").value);
-        console.log("downloaded");
-        outputEl.innerHTML = "Downloaded";
-    });
-
-    document.querySelector("#terminate").addEventListener("click", () => {
-        console.log("Clicked terminate");
-        stopASR();
-        outputEl.innerHTML = "Terminated";
-    });
-
-
-    onModelChange(document.querySelector("#models").value)
 }
 
-const outputEl = document.querySelector("#output");
-const tempTextEl = document.querySelector("#tempText");
 
-initKaldi()
 
+// Comment all below when building
+async function main() {
+    const kaldi = new KaldiASR("models", "english_small");
+    await kaldi.askForMicrophone();
+    kaldi.init();
+}
+main();
 
 // Listen to the custom event that was created in updateTranscription
 window.addEventListener("onTranscription", (msg) => {
+    const outputEl = document.querySelector("#output");
+    const tempTextEl = document.querySelector("#tempText");
     const { transcription } = msg.detail;
+
     if (msg.detail.isFinal) {
         outputEl.innerHTML = `${outputEl.innerHTML} <br> ${transcription}`;
         if (["blue", "green", "red"].includes(transcription)) {
@@ -177,4 +170,4 @@ window.addEventListener("onTranscription", (msg) => {
     } else {
         tempTextEl.innerHTML = msg.detail.transcription;
     }
-})
+});

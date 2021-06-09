@@ -19,6 +19,7 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].bundle.js',
+    library: "KaldiWeb",
   },
   target: 'web',
   module: {
