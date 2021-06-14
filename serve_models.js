@@ -4,7 +4,7 @@ const cors = require('cors');
 
 const express = require('express');
 
-const PORT = 3300;
+const PORT = 4400;
 const MODEL_DIR = path.join(__dirname, 'public');
 
 const app = express();

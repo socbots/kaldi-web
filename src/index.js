@@ -52,14 +52,21 @@ export class KaldiASR {
         })
     }
 
-    init() {
-        this.asrHandler = new ASRHandler();
-        this.onModelChange(this.modelName);
+    async init() {
+        return new Promise(async (resolve, reject) => {
+            this.asrHandler = new ASRHandler();
+            await this.onModelChange(this.modelName)
+            resolve();
+            //.then(resolve)
+            //.catch(reject);
+
+        })
     }
 
     // This one downloads the model, initializes the ASR worker with it, sets up the audio handling
     // and currently also starts ASR so that you don't have to click all the buttons in the UI
-    onModelChange(modelName) {
+    async onModelChange(modelName) {
+        //return new Promise((resolve, reject) => {
         this.downloadAndStore(modelName)
             .then(({ value: zip }) => new Promise((resolve, reject) => {
                 this.asrHandler.terminate()
@@ -74,8 +81,22 @@ export class KaldiASR {
             .then(() => {
                 console.log("model is set, starting ASR.....");
                 this.startASR();
+                return true;
             })
-            .catch(console.error);
+            .catch((err) => {
+                console.error(err);
+                return false;
+            });
+        // });
+    }
+
+    async asdf() {
+        const ayy = "yoyoyo";
+        if (Date.now() >= 9000) {
+            return ayy;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -148,11 +169,14 @@ export class KaldiASR {
 
 
 
-// Comment all below when building
+/**
+ * Comment all below when building, the code below is only for development!
+ */
+
 async function main() {
     const kaldi = new KaldiASR("models", "english_small");
     await kaldi.askForMicrophone();
-    kaldi.init();
+    await kaldi.init();
 }
 main();
 
