@@ -172,9 +172,10 @@ export class KaldiASR {
 /**
  * Comment all below when building, the code below is only for development!
  */
+let kaldi;
 
 async function main() {
-    const kaldi = new KaldiASR("models", "english_small");
+    kaldi = new KaldiASR("models", "english_small");
     await kaldi.askForMicrophone();
     await kaldi.init();
 }
@@ -194,4 +195,11 @@ window.addEventListener("onTranscription", (msg) => {
     } else {
         tempTextEl.innerHTML = msg.detail.transcription;
     }
+});
+
+const listenToggle = document.querySelector("#listenToggle");
+
+listenToggle.addEventListener("click", (e) => {
+    kaldi.robotCanListen = !kaldi.robotCanListen;
+    listenToggle.innerHTML = `Listening: ${kaldi.robotCanListen}`;
 });
