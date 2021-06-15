@@ -1,9 +1,10 @@
 const fs = require('fs');
 const path = require('path');
+const cors = require('cors');
 
 const express = require('express');
 
-const PORT = 3300;
+const PORT = 4400;
 const MODEL_DIR = path.join(__dirname, 'public');
 
 const app = express();
@@ -18,6 +19,8 @@ function getFilePath(filename) {
   if (fs.existsSync(filepath)) return filepath;
   throw new Error(`${filepath} not found`);
 }
+
+app.use(cors({origin: true}));
 
 app.get('/models/:fileName', (req, res) => {
   try {
