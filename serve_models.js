@@ -46,6 +46,12 @@ app.get('/models', (req, res) => {
   res.send(models.map(rmExtension));
 });
 
+app.get('/', (req, res) => {
+  console.log(req.ip + " requested for /");
+  res.status(200);
+  res.send("'ELLO");
+});
+
 const server = app.listen(PORT, '0.0.0.0', () => {
   const { address, port } = server.address();
   console.log(`Server running at http://${address}:${port}`);

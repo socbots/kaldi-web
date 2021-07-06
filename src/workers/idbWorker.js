@@ -34,7 +34,6 @@ function initDB(idbName, idbVersion) {
         .then(resolve)
         .catch(rej);
     });
-
     req.addEventListener('error', rej);
   });
 }
@@ -98,6 +97,7 @@ const helper = {
 
 onmessage = (msg) => {
   const { command } = msg.data;
+  console.log("Command is:", command);
   const response = { command, ok: true };
 
   if (command in helper) {

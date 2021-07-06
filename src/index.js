@@ -1,4 +1,4 @@
-//import IDBHandler from './workerWrappers/idbHandler.js';
+import IDBHandler from './workerWrappers/idbHandler.js';
 import ASRHandler from './workerWrappers/asrHandler.js';
 
 import ResampleHandler from './workerWrappers/resamplerHandler.js';
@@ -21,6 +21,14 @@ export class KaldiASR {
         this.modelURLPrefix = modelURL;
         this.modelName = modelName;
         this.robotCanListen = true;
+        this.idbInfo = {
+            name: 'asr_models',
+            version: 1,
+            storeInfo: {
+                name: 'models',
+                keyPath: 'language',
+            },
+        };
 
         this.state = {
             prevIsFinal: false,
@@ -30,6 +38,8 @@ export class KaldiASR {
 
         // The kaldi ASR worker
         this.asrHandler = null;
+        // IndexedDB worker
+        this.idbHandler = null;
         // Audio processing worker
         this.resamplerHandler = null;
     }
@@ -55,6 +65,10 @@ export class KaldiASR {
     async init() {
         return new Promise(async (resolve, reject) => {
             this.asrHandler = new ASRHandler();
+            this.idbHandler = new IDBHandler();
+
+            await this.idbHandler.init(this.idbInfo)
+                .catch(console.error);
             await this.onModelChange(this.modelName)
             resolve();
             //.then(resolve)
@@ -66,8 +80,8 @@ export class KaldiASR {
     // This one downloads the model, initializes the ASR worker with it, sets up the audio handling
     // and currently also starts ASR so that you don't have to click all the buttons in the UI
     async onModelChange(modelName) {
-        //return new Promise((resolve, reject) => {
-        this.downloadAndStore(modelName)
+        this.idbHandler.get(modelName)
+            .catch(() => this.downloadAndStore(modelName))
             .then(({ value: zip }) => new Promise((resolve, reject) => {
                 this.asrHandler.terminate()
                     .then(() => {
@@ -87,16 +101,6 @@ export class KaldiASR {
                 console.error(err);
                 return false;
             });
-        // });
-    }
-
-    async asdf() {
-        const ayy = "yoyoyo";
-        if (Date.now() >= 9000) {
-            return ayy;
-        } else {
-            return false;
-        }
     }
 
     /**
@@ -117,9 +121,13 @@ export class KaldiASR {
         // prefix = "models". so it fetches from localhost:8080/models/:modelName which is actually a
         // a proxy to the express server at localhost:3300/models/:modelName
         return new Promise((resolve, reject) => {
-            console.log("Downloading model");
+            console.log(`Downloading model ${modelName}`);
             downloadModelFromWeb(`${this.modelURLPrefix}/${modelName}`)
-                .then((zip) => { resolve({ value: zip }); })
+                .then((zip) => {
+                    this.idbHandler.add(modelName, zip)
+                        .catch(console.error)
+                        .finally(() => resolve({ value: zip }));
+                })
                 .catch(reject);
         });
     }
@@ -132,23 +140,25 @@ export class KaldiASR {
 
         const { text, isFinal } = transcription;
         // skip streak of isFinal (i.e. repetition of final utterance)
-        if (/*!state.prevIsFinal*/ true) {
+        if (!this.state.prevIsFinal) {
             // bug: first trancript of new utterance always skipped
             if ((isFinal && text !== '') || !isFinal) {
                 const { transcriptions } = this.state;
                 this.state.transcriptions.push(text)
                 this.state.tmpTranscription = '';
-                console.log("Transcription: ", text);
+                console.log("Transcription is final: ", isFinal, text);
 
                 // A custom event listener for announcing every time a new transcription is available
                 const evt = new CustomEvent("onTranscription", {
                     detail: {
-                        isFinal,
+                        isFinal: isFinal,
                         transcription: text
                     }
                 });
                 dispatchEvent(evt);
             }
+            this.state.prevIsFinal = isFinal;
+        } else {
             this.state.prevIsFinal = isFinal;
         }
     }
@@ -172,10 +182,12 @@ export class KaldiASR {
 /**
  * Comment all below when building, the code below is only for development!
  */
+
+
 let kaldi;
 
 async function main() {
-    kaldi = new KaldiASR("models", "english_small");
+    kaldi = new KaldiASR("https://johan.onl/models", "english_small");
     await kaldi.askForMicrophone();
     await kaldi.init();
 }

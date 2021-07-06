@@ -1,10 +1,9 @@
-//import IDBWorker from '../workers/idbWorker.js';
+import IDBWorker from '../workers/idbWorker.js';
 import WorkerWrapper from './workerWrapper.js';
 
 export default class IDBHandler extends WorkerWrapper {
   constructor() {
-    //super(new IDBWorker());
-    super(new Worker('../workers/idbWorker.js'));
+    super(new IDBWorker());
   }
 
   init(idbInfo) {
