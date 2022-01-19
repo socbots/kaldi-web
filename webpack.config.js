@@ -23,9 +23,13 @@ module.exports = (env, argv) => {
       index: path.resolve(__dirname, 'src', 'index.js'),
     },
     output: {
-      path: path.resolve(__dirname, 'dist'),
-      filename: '[name].bundle.js',
+      path: path.resolve(__dirname, 'build'),
+      filename: 'kaldi.main.js',
       library: "KaldiWeb",
+      // publicPath = Gets prepended to every file request the script
+      // makes to the host server. Ie. The esmodule imports get translated
+      // to "/kaldi/asrWorker.js"
+      publicPath: '/kaldi/',
     },
     target: 'web',
     module: {
@@ -34,7 +38,8 @@ module.exports = (env, argv) => {
           test: /workers\/.*\.js$/,
           loader: 'worker-loader',
           options: {
-            name: '[name].[contenthash].[ext]',
+            //publicPath: '/kaldi/',
+            name: '[name].[ext]',
           },
         },
         {
@@ -50,8 +55,8 @@ module.exports = (env, argv) => {
           type: 'javascript/auto',
           loader: 'file-loader',
           options: {
-            publicPath: '',
-            name: '[name].[hash].[ext]',
+            //publicPath: '/kaldi/',
+            name: '[name].[ext]',
           },
         },
       ],

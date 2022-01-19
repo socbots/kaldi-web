@@ -76,16 +76,22 @@ export class KaldiASR {
 
         })
     }
-
-    // This one downloads the model, initializes the ASR worker with it, sets up the audio handling
-    // and currently also starts ASR so that you don't have to click all the buttons in the UI
+    /**
+     * Downloads the model, initializes the ASR worker with it, sets up the audio handling
+     * and currently also starts ASR so that you don't have to click all the buttons in the UI
+     *
+     * @param {string} modelName 
+     */
     async onModelChange(modelName) {
         this.idbHandler.get(modelName)
-            .catch(() => this.downloadAndStore(modelName))
+            .catch(() => {
+                console.log(`Kaldi: .catch(): idbHandler did not find model ${modelName}, downloading...`);
+                return this.downloadAndStore(modelName)
+            })
             .then(({ value: zip }) => new Promise((resolve, reject) => {
                 this.asrHandler.terminate()
                     .then(() => {
-                        console.log("Initializing model");
+                        console.log("Kaldi: Initializing model");
                         resolve(this.asrHandler.init(modelName, zip));
                     })
                     .catch(reject);
@@ -93,7 +99,7 @@ export class KaldiASR {
             .then(() => this.asrHandler.getSampleRate())
             .then((asrSR) => this.resamplerHandler.setSampleRate(asrSR))
             .then(() => {
-                console.log("model is set, starting ASR.....");
+                console.log("Kaldi: Model is set, starting ASR.....");
                 this.startASR();
                 return true;
             })
@@ -104,12 +110,12 @@ export class KaldiASR {
     }
 
     /**
-     This function gets passed to the resamplerHandler constructor
-     It gets called every time there's sound from the microphone and gives the audio buffer
-     to asrHandler
-     This is a pretty good place to decide if the robot should listen or not i think
-     so robotCanListen is just a boolean that you can control when audio should be STT'd
-    */
+     * This function gets passed to the resamplerHandler constructor
+     * It gets called every time there's sound from the microphone and gives the audio buffer
+     * to asrHandler
+     * This is a pretty good place to decide if the robot should listen or not i think
+     * so robotCanListen is just a boolean that you can control when audio should be STT'd
+     */
     onResampled(buffer) {
         if (this.robotCanListen) {
             this.asrHandler.process(buffer)
@@ -117,11 +123,15 @@ export class KaldiASR {
         }
     }
 
+    /**
+     * 
+     * @param {string} modelName 
+     * @returns {obj} Dictionary with the language model as a compressed archive .zip
+     */
     downloadAndStore(modelName) {
-        // prefix = "models". so it fetches from localhost:8080/models/:modelName which is actually a
-        // a proxy to the express server at localhost:3300/models/:modelName
+        // prefix = "models"
         return new Promise((resolve, reject) => {
-            console.log(`Downloading model ${modelName}`);
+            console.log(`Kaldi: Downloading model ${modelName}`);
             downloadModelFromWeb(`${this.modelURLPrefix}/${modelName}`)
                 .then((zip) => {
                     this.idbHandler.add(modelName, zip)
@@ -133,7 +143,7 @@ export class KaldiASR {
     }
 
     /**
-      This gets called every time kaldi has STT'd, the text gets emitted with a custom event
+      * This gets called every time kaldi has STT'd, the text gets emitted with a custom event
      */
     updateTranscription(transcription) {
         if (transcription === null) return;
@@ -184,10 +194,11 @@ export class KaldiASR {
  */
 
 
+
 let kaldi;
 
 async function main() {
-    kaldi = new KaldiASR("https://johan.onl/models", "english_small");
+    kaldi = new KaldiASR("https://johan.onl/models", "english");
     await kaldi.askForMicrophone();
     await kaldi.init();
 }

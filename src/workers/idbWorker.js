@@ -22,17 +22,17 @@ function getStored() {
 function initDB(idbName, idbVersion) {
   return new Promise((resolve, rej) => {
     const req = indexedDB.open(idbName, idbVersion);
-
+    
     req.onupgradeneeded = (event) => {
       db = req.result;
       upgradeDB(db, event.oldVersion);
     };
-
+    
     req.addEventListener('success', () => {
       db = req.result;
       getStored()
-        .then(resolve)
-        .catch(rej);
+      .then(resolve)
+      .catch(rej);
     });
     req.addEventListener('error', rej);
   });
@@ -97,7 +97,6 @@ const helper = {
 
 onmessage = (msg) => {
   const { command } = msg.data;
-  console.log("Command is:", command);
   const response = { command, ok: true };
 
   if (command in helper) {
