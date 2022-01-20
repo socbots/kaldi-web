@@ -20,7 +20,7 @@ export class KaldiASR {
         this.resamplerBufferSize = 4096; // ~ 90 ms at 44.1kHz
         this.modelURLPrefix = modelURL;
         this.modelName = modelName;
-        this.robotCanListen = true;
+        this.listening = true;
         this.idbInfo = {
             name: 'asr_models',
             version: 1,
@@ -114,10 +114,10 @@ export class KaldiASR {
      * It gets called every time there's sound from the microphone and gives the audio buffer
      * to asrHandler
      * This is a pretty good place to decide if the robot should listen or not i think
-     * so robotCanListen is just a boolean that you can control when audio should be STT'd
+     * so listening is just a boolean that you can control when audio should be STT'd
      */
     onResampled(buffer) {
-        if (this.robotCanListen) {
+        if (this.listening) {
             this.asrHandler.process(buffer)
                 .then(this.updateTranscription);
         }
@@ -194,7 +194,7 @@ export class KaldiASR {
  */
 
 
-
+/*
 let kaldi;
 
 async function main() {
@@ -223,6 +223,7 @@ window.addEventListener("onTranscription", (msg) => {
 const listenToggle = document.querySelector("#listenToggle");
 
 listenToggle.addEventListener("click", (e) => {
-    kaldi.robotCanListen = !kaldi.robotCanListen;
-    listenToggle.innerHTML = `Listening: ${kaldi.robotCanListen}`;
+    kaldi.listening = !kaldi.listening;
+    listenToggle.innerHTML = `Listening: ${kaldi.listening}`;
 });
+*/

@@ -26,10 +26,11 @@ module.exports = (env, argv) => {
       path: path.resolve(__dirname, 'build'),
       filename: 'kaldi.main.js',
       library: "KaldiWeb",
-      // publicPath = Gets prepended to every file request the script
-      // makes to the host server. Ie. The esmodule imports get translated
-      // to "/kaldi/asrWorker.js"
-      publicPath: '/kaldi/',
+      // publicPath = Place of kaldi .js and .wasm files when used in a website.
+      // !!!NOTE: The .wasm files must be nested inside another folder called kaldi too.
+      // kaldi/kaldi/foo.wasm
+      // It's very stupid but that's how it works.
+      publicPath: 'kaldi/',
     },
     target: 'web',
     module: {
