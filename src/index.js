@@ -85,13 +85,13 @@ export class KaldiASR {
     async onModelChange(modelName) {
         this.idbHandler.get(modelName)
             .catch(() => {
-                console.log(`Kaldi: .catch(): idbHandler did not find model ${modelName}, downloading...`);
+                console.log(`Baldi: .catch(): idbHandler did not find model ${modelName}, downloading...`);
                 return this.downloadAndStore(modelName)
             })
             .then(({ value: zip }) => new Promise((resolve, reject) => {
                 this.asrHandler.terminate()
                     .then(() => {
-                        console.log("Kaldi: Initializing model");
+                        console.log("Baldi: Initializing model");
                         resolve(this.asrHandler.init(modelName, zip));
                     })
                     .catch(reject);
@@ -99,7 +99,7 @@ export class KaldiASR {
             .then(() => this.asrHandler.getSampleRate())
             .then((asrSR) => this.resamplerHandler.setSampleRate(asrSR))
             .then(() => {
-                console.log("Kaldi: Model is set, starting ASR.....");
+                console.log("Baldi: Model is set, starting ASR.....");
                 this.startASR();
                 return true;
             })
@@ -131,7 +131,7 @@ export class KaldiASR {
     downloadAndStore(modelName) {
         // prefix = "models"
         return new Promise((resolve, reject) => {
-            console.log(`Kaldi: Downloading model ${modelName}`);
+            console.log(`Baldi: Downloading model ${modelName}`);
             downloadModelFromWeb(`${this.modelURLPrefix}/${modelName}`)
                 .then((zip) => {
                     this.idbHandler.add(modelName, zip)
@@ -175,7 +175,15 @@ export class KaldiASR {
 
     startASR() {
         this.resamplerHandler.start();
-        console.log("ASR Has started");
+        console.log("Baldi: ASR Has started");
+
+        // A custom event listener for announcing when the ASR is available
+        const asrReady = new CustomEvent("onASRStart", {
+            detail: {
+                ready: true,
+            }
+        });
+        dispatchEvent(asrReady);
     }
 
     stopASR() {
@@ -183,7 +191,7 @@ export class KaldiASR {
             .then(() => this.asrHandler.reset())
             .then(this.updateTranscription)
             .catch(console.log)
-            .finally(() => console.log("ASR Has been stopped"));
+            .finally(() => console.log("Baldi: ASR Has been stopped"));
     }
 }
 
