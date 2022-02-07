@@ -49,7 +49,7 @@ app.get('/models', (req, res) => {
 app.get('/', (req, res) => {
   console.log(req.ip + " requested for /");
   res.status(200);
-  res.send("'ELLO");
+  res.send("You are at the root of the language model server");
 });
 
 const server = app.listen(PORT, '0.0.0.0', () => {

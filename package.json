@@ -10,7 +10,7 @@
     "build": "webpack --mode production"
   },
   "author": "",
-  "license": "i dunno yet, kaldi-web was confusion",
+  "license": "Licences can be found in ./licenses/",
   "dependencies": {
     "jszip": "^3.3.0"
   },

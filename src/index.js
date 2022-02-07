@@ -134,9 +134,13 @@ export class KaldiASR {
             console.log(`Baldi: Downloading model ${modelName}`);
             downloadModelFromWeb(`${this.modelURLPrefix}/${modelName}`)
                 .then((zip) => {
-                    this.idbHandler.add(modelName, zip)
-                        .catch(console.error)
-                        .finally(() => resolve({ value: zip }));
+                    try {
+                        this.idbHandler.add(modelName, zip)
+                    } catch (er) {
+                        console.log("error:", er);
+                    } finally {
+                        resolve({ value: zip });
+                    }
                 })
                 .catch(reject);
         });
@@ -153,10 +157,8 @@ export class KaldiASR {
         if (!this.state.prevIsFinal) {
             // bug: first trancript of new utterance always skipped
             if ((isFinal && text !== '') || !isFinal) {
-                const { transcriptions } = this.state;
                 this.state.transcriptions.push(text)
                 this.state.tmpTranscription = '';
-                console.log("Transcription is final: ", isFinal, text);
 
                 // A custom event listener for announcing every time a new transcription is available
                 const evt = new CustomEvent("onTranscription", {
@@ -200,13 +202,11 @@ export class KaldiASR {
 /**
  * Comment all below when building, the code below is only for development!
  */
-
-
 /*
 let kaldi;
 
 async function main() {
-    kaldi = new KaldiASR("https://johan.onl/models", "english");
+    kaldi = new KaldiASR("/models", "swedish_v2");
     await kaldi.askForMicrophone();
     await kaldi.init();
 }
